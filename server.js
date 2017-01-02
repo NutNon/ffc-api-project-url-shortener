@@ -3,6 +3,8 @@ var express 	=   require(`express`)
 var mongodb 	=   require('mongodb')
 var validator	=	require('validator')
 var randomstring =	require("randomstring")
+
+require('dotenv').config()
 var app = express()
  
 // We need to work with "MongoClient" interface in order to connect to a mongodb server.
@@ -20,11 +22,12 @@ app.get('/', function(req, res) {
 })
 
 // Create new shortened URL.
-app.get('/new/:url', function(req, res) {
+app.get('/new/:url*', function(req, res) {
     // Check if URL param is valid.
-    var originalUrl = validator.isUrl(req.params.url) ? req.params.url : false
+    var originalUrl = validator.isURL(req.url.slice(5)) ? req.url.slice(5) : false
+    // var originalUrl = req.params.url
     if( !originalUrl ) {
-        res.send( JSON.stringify({ error: `URL invalid`}) )
+        res.send( JSON.stringify({ error: `URL invalid`, url: req.url.slice(5) }) )
         return
     }
     
@@ -53,16 +56,16 @@ app.get('/new/:url', function(req, res) {
     // Send JSON output.
     res.send( JSON.stringify({
     	original_url: originalUrl,
-    	short_url: req.hostname + shortUrl,
+    	short_url:  process.env.APP_URL + shortUrl,
     }) )
 })
 
 // Access shortened URL.
 app.get('/:url', function(req, res) {
 	// Connect to DB.
-    MongoClient.connect(url, function(err, db) {
+    MongoClient.connect(MongoUrl, function(err, db) {
 		if(err)	console.error(err)
-		
+			
 		// db gives access to the database
 		db.collection('urls').find({
 			short_url:	req.params.url
@@ -70,7 +73,7 @@ app.get('/:url', function(req, res) {
 			if(err) console.error(err)
 			
 			// Redirect to shortened URL.
-			res.redirect(documents.original_url)
+			if(documents[0]) res.redirect(documents[0].original_url)
 			db.close()
 		})
 	})
